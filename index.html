@@ -1,0 +1,1081 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="default"/>
+  <meta name="apple-mobile-web-app-title" content="NursePad"/>
+  <meta name="theme-color" content="#E0638A"/>
+  <meta name="description" content="NursePad - Lake Tech LPN 2025-2026 Study App"/>
+  <title>NursePad 🩺</title>
+  <style>
+    *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+    body{margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,'Inter',system-ui,sans-serif}
+    #root{min-height:100vh}
+    input,textarea,select,button{font-family:inherit}
+    ::-webkit-scrollbar{width:4px;height:4px}
+    ::-webkit-scrollbar-thumb{background:#E0638A44;border-radius:99px}
+  </style>
+</head>
+<body>
+  <div id="root">
+    <div style="display:flex;align-items:center;justify-content:center;height:100vh;flex-direction:column;gap:16px;background:#FFF5F8">
+      <div style="font-size:52px">🩺</div>
+      <div style="font-size:22px;font-weight:700;color:#E0638A;font-family:Georgia,serif">NursePad</div>
+      <div style="font-size:13px;color:#B06080">Lake Tech LPN 2025–2026</div>
+      <div style="width:40px;height:4px;background:#E0638A;border-radius:99px;animation:pulse 1s ease-in-out infinite alternate"></div>
+    </div>
+  </div>
+  <style>@keyframes pulse{from{opacity:.3;transform:scaleX(.5)}to{opacity:1;transform:scaleX(1)}}</style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js" crossorigin="anonymous"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js" crossorigin="anonymous"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js" crossorigin="anonymous"></script>
+  <script type="text/babel" data-presets="react,env">
+const { useState, useEffect, useCallback } = React;
+
+const C = {
+  bg:"#F7F4EF",surface:"#FFFFFF",surfaceAlt:"#F0EBE3",
+  sage:"#5C7A6B",sageDark:"#3D5249",sageLight:"#D4E4DC",
+  amber:"#C97D3A",amberLight:"#F5E4CE",
+  clay:"#B85C4A",clayLight:"#F5DDD9",
+  ink:"#2A2520",muted:"#7A7068",border:"#DDD5CA",white:"#FFFFFF",
+  purple:"#7B5EA7",purpleLight:"#EDE8F5",
+  teal:"#3A7A7A",tealLight:"#D4ECEC",
+};
+const SK="nursepad_v4";
+const load=()=>{try{return JSON.parse(localStorage.getItem(SK)||"{}");}catch{return{};}};
+const save=d=>{try{localStorage.setItem(SK,JSON.stringify(d));}catch{}};
+const DAYS=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+const MONTHS=["January","February","March","April","May","June","July","August","September","October","November","December"];
+const TODAY=new Date();
+const pad=n=>String(n).padStart(2,"0");
+const dateKey=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const getDIM=(y,m)=>new Date(y,m+1,0).getDate();
+const getFDW=(y,m)=>new Date(y,m,1).getDay();
+const PRI={high:{bg:C.clayLight,text:C.clay,dot:C.clay},medium:{bg:C.amberLight,text:C.amber,dot:C.amber},low:{bg:C.sageLight,text:C.sageDark,dot:C.sage}};
+const DCAT=["Cardiac","Respiratory","Neurological","Antibiotic","Pain/Analgesic","Endocrine","Other"];
+
+const COURSES=[
+  {id:"f1",name:"PN Foundations 1",code:"PRN0098",hours:300,sem:"PRN0098"},
+  {id:"f2",name:"PN Foundations 2",code:"PRN0099",hours:300,sem:"PRN0099"},
+  {id:"ms1",name:"Medical Surgical Nursing 1",code:"PRN0290",hours:300,sem:"PRN0290"},
+  {id:"ms2",name:"Medical Surgical Nursing 2",code:"PRN0291",hours:300,sem:"PRN0291"},
+  {id:"comp",name:"Comprehensive Nursing & Transitional Skills",code:"PRN0690",hours:150,sem:"PRN0690"},
+];
+
+const MODS=[
+  {id:1,name:"Foundations of Nursing — Role, Legal & Ethical",course:"f1",summary:"LPN scope of practice, Florida Nurse Practice Act, HIPAA, ethical responsibilities, and chain of command.",objectives:"Understand LPN vs RN scope\nKnow Florida Nurse Practice Act basics\nIdentify HIPAA requirements\nFollow chain of command",keyTerms:[{id:1,word:"Scope of Practice",definition:"Legal boundaries of LPN practice"},{id:2,word:"HIPAA",definition:"Federal law protecting patient health info"},{id:3,word:"Nursing Process",definition:"ADPIE: Assess, Diagnose, Plan, Implement, Evaluate"},{id:4,word:"Chain of Command",definition:"Instructor → HC Programs Coordinator → Dean → Director → Exec Director"}],resources:"MPI Program Overview; Florida BON website",status:"upcoming",startDate:"",endDate:""},
+  {id:2,name:"Infection Control & Aseptic Technique",course:"f1",summary:"Standard precautions, sterile vs clean technique, PPE, hand hygiene, chain of infection.",objectives:"Perform proper hand hygiene\nDon/doff PPE correctly\nDistinguish sterile vs clean technique\nBreak the chain of infection",keyTerms:[{id:1,word:"Standard Precautions",definition:"Applied to ALL patients regardless of diagnosis"},{id:2,word:"Sterile Field",definition:"Area free of ALL microorganisms including spores"},{id:3,word:"PPE",definition:"Gloves, gown, mask, eye protection"},{id:4,word:"Medical Asepsis",definition:"Clean technique — reduces number of microorganisms"}],resources:"DOE Standards 11.0 & 12.0",status:"upcoming",startDate:"",endDate:""},
+  {id:3,name:"Vital Signs & Patient Assessment",course:"f1",summary:"BP, pulse, respirations, temperature, SpO₂, and pain. Normal ranges, documentation, and when to report.",objectives:"Measure all 5 vital signs accurately\nDocument with correct route notation\nIdentify abnormal values and escalate\nCount RR without patient awareness",keyTerms:[{id:1,word:"Bradycardia",definition:"HR < 60 bpm"},{id:2,word:"Tachypnea",definition:"RR > 20 breaths/min"},{id:3,word:"Hypertension",definition:"BP ≥ 130/80 mmHg"},{id:4,word:"Pyrexia",definition:"Fever ≥ 38.1°C / 100.6°F"},{id:5,word:"SpO₂",definition:"Oxygen saturation — normal 95–100% on room air"}],resources:"DOE 16.0; Vitals tab in NursePad",status:"upcoming",startDate:"",endDate:""},
+  {id:4,name:"Nutrition & Elimination",course:"f1",summary:"Macronutrients, therapeutic diets, fluid/electrolyte balance, and elimination nursing care.",objectives:"Identify therapeutic diet types\nRecognize signs of fluid imbalance\nProvide appropriate elimination care",keyTerms:[{id:1,word:"NPO",definition:"Nothing by mouth — no food or fluids"},{id:2,word:"Dysphagia",definition:"Difficulty swallowing"},{id:3,word:"Edema",definition:"Abnormal fluid accumulation in tissues"},{id:4,word:"Electrolyte",definition:"Minerals in blood that carry electrical charge (Na, K, Ca, Mg)"}],resources:"DOE 14.0",status:"upcoming",startDate:"",endDate:""},
+  {id:5,name:"Human Growth & Development Across the Lifespan",course:"f1",summary:"Developmental stages from neonate through geriatric. Erikson's stages, normal milestones, and age-appropriate nursing care.",objectives:"Apply Erikson's 8 psychosocial stages\nIdentify normal developmental milestones\nAdapt communication to developmental stage\nProvide age-appropriate patient education",keyTerms:[{id:1,word:"Erikson's Stages",definition:"8 psychosocial stages from infancy to old age"},{id:2,word:"Neonate",definition:"Birth to 28 days"},{id:3,word:"Toddler",definition:"Ages 1–3 — Autonomy vs Shame/Doubt stage"},{id:4,word:"Adolescent",definition:"Ages 12–18 — Identity vs Role Confusion"},{id:5,word:"Geriatric",definition:"Age 65+ — Ego Integrity vs Despair"},{id:6,word:"Trust vs Mistrust",definition:"Erikson Stage 1: Infant 0–1yr — foundational trust from caregivers"}],resources:"DOE 15.0",status:"active",startDate:"",endDate:""},
+  {id:6,name:"Pharmacology & Medication Administration",course:"f2",summary:"Drug classifications, routes of admin, med math, 6 rights. Med Math Exam requires ≥90% — 2 attempts max.",objectives:"Apply the 6 rights of medication administration\nCalculate medication dosages accurately\nIdentify common drug classifications\nPass Med Math Exam ≥90%",keyTerms:[{id:1,word:"Six Rights",definition:"Right patient, drug, dose, route, time, documentation"},{id:2,word:"PRN",definition:"As needed"},{id:3,word:"Contraindication",definition:"Reason a medication should NOT be given"},{id:4,word:"Pharmacokinetics",definition:"ADME: Absorption, Distribution, Metabolism, Excretion"},{id:5,word:"Polypharmacy",definition:"Use of multiple medications — increases adverse reaction risk"}],resources:"DOE 17.0; Drug Cards tab; Med Math requires 90% (2 attempts max)",status:"upcoming",startDate:"",endDate:""},
+  {id:7,name:"Med-Surg: Cardiovascular & Respiratory",course:"ms1",summary:"Heart disease, HTN, heart failure, COPD, pneumonia, respiratory emergencies, and surgical care.",objectives:"Priority nursing interventions for cardiac patients\nRecognize respiratory distress signs\nAdminister O₂ therapy correctly\nMonitor cardiac medications",keyTerms:[{id:1,word:"CHF",definition:"Congestive Heart Failure — heart can't pump efficiently"},{id:2,word:"COPD",definition:"Target SpO₂ 88–92% — higher O₂ suppresses breathing drive"},{id:3,word:"Crackles",definition:"Fluid in airways — abnormal breath sound"},{id:4,word:"Angina",definition:"Chest pain from reduced blood flow to the heart"}],resources:"DOE 22.0",status:"upcoming",startDate:"",endDate:""},
+  {id:8,name:"Med-Surg: Musculoskeletal & Integumentary",course:"ms1",summary:"Fractures, joint replacements, mobility care, wound care, pressure injuries, and skin disorders.",objectives:"Implement fall prevention strategies\nCare for patient post orthopedic surgery\nStage and treat pressure injuries\nApply wound care principles",keyTerms:[{id:1,word:"DVT",definition:"Deep Vein Thrombosis — common post-op clot risk"},{id:2,word:"Pressure Injury Stages",definition:"Stage 1 (redness) → Stage 4 (bone/tendon exposed)"},{id:3,word:"Compartment Syndrome",definition:"Increased pressure in muscle compartment — emergency"}],resources:"DOE 22.0",status:"upcoming",startDate:"",endDate:""},
+  {id:9,name:"Med-Surg: Neurological & Sensory",course:"ms1",summary:"Stroke, seizures, ICP, Parkinson's, MS, eye and ear disorders.",objectives:"Recognize stroke warning signs (FAST)\nProvide seizure precaution care\nIdentify increased ICP signs\nCare for sensory-impaired patients",keyTerms:[{id:1,word:"FAST",definition:"Face drooping, Arm weakness, Speech difficulty, Time to call 911"},{id:2,word:"ICP",definition:"Intracranial Pressure — Cushing's Triad: HTN, bradycardia, irregular resp"},{id:3,word:"Postictal Phase",definition:"Period of confusion/sleepiness after a seizure"}],resources:"DOE 24.0",status:"upcoming",startDate:"",endDate:""},
+  {id:10,name:"Med-Surg: GI, GU & Endocrine",course:"ms2",summary:"Diabetes, thyroid disorders, GI tract, renal failure, urinary conditions.",objectives:"Monitor blood glucose and manage insulin\nRecognize hypo/hyperglycemia signs and treat\nCare for urinary catheter with sterile technique\nIdentify signs of acute renal failure",keyTerms:[{id:1,word:"Hypoglycemia",definition:"Blood glucose < 70 mg/dL — give fast-acting carbs"},{id:2,word:"DKA",definition:"Diabetic Ketoacidosis — life-threatening Type 1 complication"},{id:3,word:"Foley Catheter",definition:"Indwelling urinary catheter — strict sterile technique required"},{id:4,word:"Cushing's Syndrome",definition:"Excess cortisol — moon face, buffalo hump, central obesity"}],resources:"DOE 24.0",status:"upcoming",startDate:"",endDate:""},
+  {id:11,name:"Maternal-Newborn & Pediatric Nursing",course:"ms2",summary:"Prenatal, labor, delivery, postpartum, newborn assessment, SIDS, and common pediatric conditions.",objectives:"Identify the 4 stages of labor\nAssess APGAR score at 1 & 5 minutes\nProvide postpartum nursing care\nApply age-specific pediatric care",keyTerms:[{id:1,word:"APGAR",definition:"Appearance, Pulse, Grimace, Activity, Respiration — scored 0-2 each at 1 & 5 min"},{id:2,word:"Lochia",definition:"Postpartum discharge: rubra (red) → serosa (pink) → alba (white)"},{id:3,word:"SIDS",definition:"Always place infant on BACK to sleep — Safe Sleep ABCs"},{id:4,word:"Preeclampsia",definition:"HTN + proteinuria in pregnancy — watch for HELLP syndrome"}],resources:"DOE 25.0, 26.0, 27.0",status:"upcoming",startDate:"",endDate:""},
+  {id:12,name:"Mental Health Nursing",course:"ms2",summary:"Therapeutic communication, mental health disorders, crisis intervention, and psychotropic medications.",objectives:"Use therapeutic communication techniques\nRecognize psychiatric emergencies\nAdminister psychotropic medications safely\nApply crisis intervention principles",keyTerms:[{id:1,word:"Therapeutic Communication",definition:"Patient-centered, trust-building — use open-ended questions"},{id:2,word:"De-escalation",definition:"Techniques to reduce agitation and prevent violence"},{id:3,word:"Psychosis",definition:"Loss of touch with reality — may include hallucinations/delusions"},{id:4,word:"Defense Mechanisms",definition:"Unconscious strategies to protect from anxiety (denial, projection, etc.)"}],resources:"DOE 18.0",status:"upcoming",startDate:"",endDate:""},
+  {id:13,name:"Comprehensive Review & NCLEX-PN Prep",course:"comp",summary:"Integrative review of all content, NCLEX-PN strategies, prioritization, and HESI Exit Exam (≥850 required).",objectives:"Apply ABC and Maslow prioritization\nUse NCLEX test-taking strategies\nScore ≥850 on HESI Exit Exam\nComplete all 29 program competencies",keyTerms:[{id:1,word:"ABC Priority",definition:"Airway → Breathing → Circulation — always in this order"},{id:2,word:"Maslow's Hierarchy",definition:"Physiological needs first, then safety, love, esteem, self-actualization"},{id:3,word:"NCLEX-PN CAT",definition:"Computerized Adaptive Testing — adjusts difficulty to your performance"},{id:4,word:"HESI Exit",definition:"Score ≥850 correlated with NCLEX success; retest mandatory if below"}],resources:"DOE 28.0 & 29.0; HESI Exit counts 30% of Comprehensive knowledge grade",status:"upcoming",startDate:"",endDate:""},
+];
+
+const VITALS=[
+  {group:"Blood Pressure",icon:"🫀",color:C.clayLight,accent:C.clay,
+   rows:[["Normal","< 120/80 mmHg","Both numbers"],["Elevated","120–129 / <80","Systolic only"],["HTN Stage 1","130–139 / 80–89",""],["HTN Stage 2","≥140 / ≥90",""],["HTN Crisis",">180 / >120","Emergency!"],["Hypotension","<90/60","Assess for shock"]],
+   tip:"Same arm. Seated, arm at heart level, 5-min rest. Document arm used."},
+  {group:"Heart Rate",icon:"💓",color:C.amberLight,accent:C.amber,
+   rows:[["Adult normal","60–100 bpm","Resting"],["Bradycardia","<60 bpm","May be normal in athletes"],["Tachycardia",">100 bpm","Assess pain/fever/dehydration"],["Infant 0–1y","100–160 bpm",""],["Child 1–10y","70–120 bpm",""]],
+   tip:"Count apical 1 full minute for irregular rhythms. Note rhythm + strength."},
+  {group:"Respiratory Rate",icon:"🫁",color:C.tealLight,accent:C.teal,
+   rows:[["Adult normal","12–20 /min",""],["Bradypnea","<12/min","Opioid OD, neuro issue"],["Tachypnea",">20/min","Fever, anxiety, pain"],["Infant","30–60/min",""],["Child 1–5y","20–40/min",""]],
+   tip:"Count WITHOUT telling the patient — they change their breathing. Appear to still be counting pulse."},
+  {group:"Temperature",icon:"🌡️",color:C.purpleLight,accent:C.purple,
+   rows:[["Normal oral","36.1–37.2°C / 97–99°F","Most common"],["Normal rectal","+0.5°C vs oral","Most accurate"],["Normal axillary","−0.5°C vs oral","Least accurate"],["Fever","≥38.1°C / ≥100.6°F",""],["Hyperthermia",">40°C / >104°F","Brain damage risk"],["Hypothermia","<35°C / <95°F","Cardiac arrhythmia risk"]],
+   tip:"Document route. Wait 15–30 min after hot/cold intake before oral temp. Fever in immunocompromised = ALWAYS urgent."},
+  {group:"SpO₂ (Oxygen Saturation)",icon:"💨",color:C.sageLight,accent:C.sageDark,
+   rows:[["Normal","95–100%","Room air"],["Mild hypoxemia","91–94%","Supplemental O₂ likely"],["Moderate","86–90%","O₂ required"],["Severe","≤85%","Emergency!"],["COPD target","88–92%","Higher O₂ suppresses drive"]],
+   tip:"Warm, nail-polish-free probe site. SpO₂ falsely normal in CO poisoning — compare to clinical picture."},
+  {group:"Pain Scale",icon:"😣",color:C.amberLight,accent:C.amber,
+   rows:[["0","No pain",""],["1–3","Mild","Doesn't interfere"],["4–6","Moderate","Interferes with some activities"],["7–9","Severe","Interferes with most activities"],["10","Worst possible","Emergency response"]],
+   tip:"FLACC for non-verbal, FACES for pediatric. Reassess 30–60 min post-intervention. Pain is SUBJECTIVE — believe the patient."},
+];
+
+// ── UI Primitives ───────────────────────────────────────────────────
+const Bdg=({c=C.sageLight,t=C.sageDark,children})=><span style={{background:c,color:t,borderRadius:99,padding:"2px 9px",fontSize:11,fontWeight:700,whiteSpace:"nowrap"}}>{children}</span>;
+const Btn=({children,onClick,v="pri",sm,sx={}})=>{
+  const base={border:"none",cursor:"pointer",borderRadius:8,fontWeight:700,fontFamily:"inherit",display:"inline-flex",alignItems:"center",gap:5,...sx};
+  const p=sm?"6px 13px":"10px 18px",f=sm?13:14;
+  const map={pri:{background:C.sage,color:C.white,padding:p,fontSize:f},sec:{background:C.surfaceAlt,color:C.ink,padding:p,fontSize:f,border:`1px solid ${C.border}`},dan:{background:C.clayLight,color:C.clay,padding:p,fontSize:f},gh:{background:"transparent",color:C.muted,padding:sm?"3px 7px":"7px 10px",fontSize:sm?12:13}};
+  return <button style={{...base,...map[v]}} onClick={onClick}>{children}</button>;
+};
+const Mdl=({title,onClose,children,wide})=>(
+  <div style={{position:"fixed",inset:0,background:"rgba(42,37,32,.45)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",padding:16}} onClick={e=>e.target===e.currentTarget&&onClose()}>
+    <div style={{background:C.surface,borderRadius:16,width:"100%",maxWidth:wide?680:500,maxHeight:"90vh",overflowY:"auto",boxShadow:"0 24px 64px rgba(0,0,0,.2)"}}>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"18px 22px 14px",borderBottom:`1px solid ${C.border}`}}>
+        <h2 style={{margin:0,fontSize:17,color:C.ink,fontFamily:"Georgia,serif"}}>{title}</h2>
+        <button onClick={onClose} style={{background:"none",border:"none",cursor:"pointer",fontSize:22,color:C.muted}}>×</button>
+      </div>
+      <div style={{padding:22}}>{children}</div>
+    </div>
+  </div>
+);
+const IS={width:"100%",border:`1px solid ${C.border}`,borderRadius:8,padding:"8px 11px",fontSize:14,fontFamily:"inherit",background:C.bg,color:C.ink,boxSizing:"border-box",outline:"none"};
+const Inp=p=><input style={IS} {...p}/>;
+const TA=p=><textarea style={{...IS,resize:"vertical",minHeight:72}} {...p}/>;
+const Sel=({children,...p})=><select style={IS} {...p}>{children}</select>;
+const Lbl=({children})=><label style={{display:"block",fontSize:11,fontWeight:700,color:C.muted,marginBottom:3,textTransform:"uppercase",letterSpacing:"0.06em"}}>{children}</label>;
+const Fld=({label,children})=><div style={{marginBottom:14}}><Lbl>{label}</Lbl>{children}</div>;
+
+const gc=p=>(!p&&p!==0)?C.muted:p>=90?C.sage:p>=77?C.amber:C.clay;
+const gl=p=>(!p&&p!==0)?"—":p>=90?"A":p>=80?"B":p>=77?"C+":p>=70?"C":p>=60?"D":"F";
+const hesiConvert=s=>{const n=Number(s);if(isNaN(n))return null;if(n>=1000)return 100;if(n>=950)return 95;if(n>=900)return 90;if(n>=850)return 85;if(n>=800)return 80;if(n>=750)return 79;if(n>=700)return 77;if(n>=650)return 70;if(n>=600)return 65;if(n>=550)return 60;if(n>=500)return 55;if(n>=450)return 50;return 40;};
+
+
+// ══════════════════════════════════════════════════════════════════════
+//  GRADE TRACKER + WHAT-IF PREDICTOR
+// ══════════════════════════════════════════════════════════════════════
+function calcKnowledge(grades){
+  const eg=grades.filter(g=>g.cat==="exams"),hg=grades.filter(g=>g.cat==="hesi"),wg=grades.filter(g=>g.cat==="hw");
+  const avg=arr=>arr.length?arr.reduce((s,g)=>s+g.pct,0)/arr.length:null;
+  const e=avg(eg),h=avg(hg),w=avg(wg);
+  let ws=0,wt=0;
+  if(e!==null){ws+=e*0.6;wt+=0.6;}
+  if(h!==null){ws+=h*0.3;wt+=0.3;}
+  if(w!==null){ws+=w*0.1;wt+=0.1;}
+  return wt>0?ws/wt:null;
+}
+function calcPillar(grades,cat){
+  const g=grades.filter(x=>x.cat===cat);
+  return g.length?g.reduce((s,x)=>s+x.pct,0)/g.length:null;
+}
+function calcOverall(grades){
+  const k=calcKnowledge(grades),s=calcPillar(grades,"skills"),p=calcPillar(grades,"prof");
+  let sum=0,cnt=0;
+  if(k!==null){sum+=k;cnt++;}if(s!==null){sum+=s;cnt++;}if(p!==null){sum+=p;cnt++;}
+  return cnt?{overall:sum/cnt,k,s,p}:{overall:null,k:null,s:null,p:null};
+}
+
+// What do I need on next exam to hit target?
+function neededScore(grades,target,cat,examWeight){
+  // For knowledge pillar: exams are 60% of it
+  // knowledge must be ≥target
+  // current exam avg with n exams
+  const exams=grades.filter(g=>g.cat==="exams");
+  const n=exams.length;
+  if(n===0) return target; // need target on first exam
+  const currentExamAvg=exams.reduce((s,g)=>s+g.pct,0)/n;
+  // After adding one more exam: new avg = (currentExamAvg*n + needed) / (n+1) = target
+  const needed=target*(n+1)-(currentExamAvg*n);
+  return Math.min(Math.max(needed,0),100);
+}
+
+function GPAView({gpa,setGpa}){
+  const [expandedId,setExpandedId]=useState(null);
+  const [gradeModal,setGradeModal]=useState(null);
+  const [predictModal,setPredictModal]=useState(null);
+  const [gf,setGf]=useState({cat:"exams",title:"",earned:"",possible:"100",hesiScore:"",notes:"",late:false});
+  const [predict,setPredict]=useState({targetKnowledge:77,targetOverall:77,nextExamPts:"",nextExamOf:"100"});
+
+  const getCourseGrades=id=>(gpa.courses||[]).find(c=>c.id===id)?.grades||[];
+
+  function openGrade(courseId){
+    setGf({cat:"exams",title:"",earned:"",possible:"100",hesiScore:"",notes:"",late:false});
+    setGradeModal(courseId);
+  }
+  function saveGrade(){
+    if(!gf.title.trim()) return;
+    const isHesi=gf.cat==="hesi";
+    let pct;
+    if(isHesi){pct=hesiConvert(gf.hesiScore);}
+    else{const raw=(Number(gf.earned)/Number(gf.possible))*100;pct=gf.late?Math.max(0,raw-10):raw;}
+    if(pct===null) return;
+    const grade={id:Date.now(),...gf,pct};
+    setGpa(g=>{
+      const courses=g.courses||[];
+      const existing=courses.find(c=>c.id===gradeModal);
+      if(existing) return{...g,courses:courses.map(c=>c.id===gradeModal?{...c,grades:[...(c.grades||[]),grade]}:c)};
+      return{...g,courses:[...courses,{id:gradeModal,grades:[grade]}]};
+    });
+    setGradeModal(null);
+  }
+  function delGrade(courseId,gradeId){
+    setGpa(g=>({...g,courses:(g.courses||[]).map(c=>c.id===courseId?{...c,grades:(c.grades||[]).filter(gr=>gr.id!==gradeId)}:c)}));
+  }
+
+  return(
+    <div>
+      <div style={{marginBottom:16}}>
+        <h2 style={{margin:"0 0 3px",fontFamily:"Georgia,serif",fontSize:21,color:C.ink}}>Grade Tracker</h2>
+        <p style={{margin:0,fontSize:12,color:C.muted}}>Real weighted grades per Lake Tech MPI — not Canvas</p>
+      </div>
+      <div style={{background:`linear-gradient(135deg,${C.sageDark},${C.sage})`,borderRadius:12,padding:"12px 16px",marginBottom:14,color:C.white,fontSize:12}}>
+        <strong>Lake Tech PN 2025–2026 · Passing = 77% in ALL 3 pillars</strong><br/>
+        <span style={{opacity:.85}}>Knowledge (33⅓%): Exams 60% + HESI 30% + HW 10% · Skills (33⅓%) · Prof Skills (33⅓%)</span>
+      </div>
+      <div style={{background:C.amberLight,border:`1px solid ${C.amber}33`,borderRadius:10,padding:"10px 14px",marginBottom:16,fontSize:12,color:C.ink}}>
+        <strong style={{color:C.amber}}>💡 Why Canvas lies:</strong> Canvas shows a simple average. Your real grade requires 77%+ in Knowledge, Skills, AND Professional Skills separately. One failing pillar = dismissed, even if your other grades are great.
+      </div>
+
+      <div style={{display:"flex",flexDirection:"column",gap:12}}>
+        {COURSES.map(course=>{
+          const grades=getCourseGrades(course.id);
+          const {overall,k,s,p}=calcOverall(grades);
+          const isOpen=expandedId===course.id;
+          const failPillars=[k!==null&&k<77?"Knowledge":null,s!==null&&s<77?"Skills":null,p!==null&&p<77?"Prof":null].filter(Boolean);
+          const medMath=course.id==="f2"?grades.filter(g=>g.cat==="medmath"):[];
+
+          return(
+            <div key={course.id} style={{background:C.surface,border:`2px solid ${failPillars.length>0?C.clay:overall!==null?gc(overall)+"55":C.border}`,borderRadius:14,overflow:"hidden"}}>
+              <div style={{padding:"14px 18px",display:"flex",alignItems:"center",gap:12,cursor:"pointer"}} onClick={()=>setExpandedId(isOpen?null:course.id)}>
+                <div style={{width:52,height:52,borderRadius:"50%",background:gc(overall)+"22",border:`2px solid ${gc(overall)}`,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                  <span style={{fontSize:14,fontWeight:800,color:gc(overall),lineHeight:1}}>{gl(overall)}</span>
+                  <span style={{fontSize:9,color:gc(overall),fontWeight:700}}>{overall!==null?overall.toFixed(1)+"%":""}</span>
+                </div>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center",marginBottom:3}}>
+                    <span style={{fontWeight:800,fontSize:14,color:C.ink}}>{course.name}</span>
+                    <Bdg>{course.sem}</Bdg>
+                    {failPillars.length>0&&<Bdg c={C.clayLight} t={C.clay}>⚠️ {failPillars.join(", ")} below 77%</Bdg>}
+                    {failPillars.length===0&&overall!==null&&<Bdg c={C.sageLight} t={C.sageDark}>On Track ✓</Bdg>}
+                  </div>
+                  <div style={{display:"flex",gap:10,fontSize:11}}>
+                    {[["K",k],["S",s],["P",p]].map(([lbl,val])=>(
+                      <span key={lbl} style={{color:gc(val),fontWeight:700}}>{lbl}: {val!==null?val.toFixed(1)+"%":"—"}{val!==null&&val<77?" ↓":""}</span>
+                    ))}
+                  </div>
+                </div>
+                <span style={{color:C.muted}}>{isOpen?"▲":"▼"}</span>
+              </div>
+
+              {isOpen&&(
+                <div style={{borderTop:`1px solid ${C.border}`,background:C.bg,padding:"14px 18px"}}>
+                  {/* Pillar cards */}
+                  <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginBottom:14}}>
+                    {[["📚 Knowledge",k,"Exams 60%\nHESI 30%\nHW 10%"],["🏥 Skills",s,"Lab + Clinical\nperformance"],["⭐ Prof. Skills",p,"Attendance\nAttitude\nTeamwork"]].map(([lbl,val,note])=>(
+                      <div key={lbl} style={{background:C.surface,border:`1px solid ${val!==null&&val<77?C.clay:C.border}`,borderRadius:10,padding:"10px"}}>
+                        <div style={{fontSize:11,color:C.muted,marginBottom:2}}>{lbl}</div>
+                        <div style={{fontSize:20,fontWeight:800,color:gc(val)}}>{val!==null?val.toFixed(1)+"%":"—"}</div>
+                        <div style={{background:C.surfaceAlt,borderRadius:99,height:4,overflow:"hidden",margin:"4px 0"}}>
+                          <div style={{width:`${Math.min(val||0,100)}%`,background:gc(val),height:"100%",borderRadius:99}}/>
+                        </div>
+                        <div style={{fontSize:9,color:C.muted,whiteSpace:"pre-line"}}>{note}</div>
+                        {val!==null&&val<77&&<div style={{fontSize:10,color:C.clay,fontWeight:700,marginTop:3}}>Below passing!</div>}
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Med Math alert for F2 */}
+                  {course.id==="f2"&&(
+                    <div style={{background:medMath.length&&medMath[0].pct>=90?C.sageLight:C.amberLight,borderRadius:9,padding:"9px 12px",marginBottom:12,fontSize:12}}>
+                      <strong>💊 Med Math Exam (≥90% required)</strong><br/>
+                      {medMath.length===0?"Not entered yet — add under 'Homework' category.":medMath[0].pct>=90?`✓ Passed: ${medMath[0].pct.toFixed(1)}%`:`⚠️ ${medMath[0].pct.toFixed(1)}% — Below 90%! Remediation required before 2nd attempt.`}
+                    </div>
+                  )}
+
+                  {/* What-If Predictor */}
+                  <div style={{background:C.purpleLight,border:`1px solid ${C.purple}44`,borderRadius:10,padding:"12px 14px",marginBottom:12}}>
+                    <div style={{fontWeight:700,fontSize:13,color:C.purple,marginBottom:10}}>🔮 What-If Predictor</div>
+                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>
+                      <div>
+                        <Lbl>Target knowledge %</Lbl>
+                        <Inp type="number" value={predict.targetKnowledge} onChange={e=>setPredict(p=>({...p,targetKnowledge:Number(e.target.value)}))} placeholder="77"/>
+                      </div>
+                      <div>
+                        <Lbl>Exams possible pts</Lbl>
+                        <Inp type="number" value={predict.nextExamOf} onChange={e=>setPredict(p=>({...p,nextExamOf:e.target.value}))} placeholder="100"/>
+                      </div>
+                    </div>
+                    {(()=>{
+                      const exams=grades.filter(g=>g.cat==="exams");
+                      const n=exams.length;
+                      const curAvg=n?exams.reduce((s,g)=>s+g.pct,0)/n:null;
+                      const target=predict.targetKnowledge;
+                      // Need exam avg to hit target knowledge (assuming hesi/hw at current avg)
+                      // knowledge = examAvg*.6 + hesiAvg*.3 + hwAvg*.1
+                      const hesiAvg=calcPillar(grades,"hesi")||85;
+                      const hwAvg=calcPillar(grades,"hw")||90;
+                      // target = newExamAvg*.6 + hesiAvg*.3 + hwAvg*.1
+                      const neededExamAvg=(target-hesiAvg*0.3-hwAvg*0.1)/0.6;
+                      // newExamAvg = (curAvg*n + nextScore)/(n+1) = neededExamAvg
+                      const neededNextExam=n?neededExamAvg*(n+1)-(curAvg*n):neededExamAvg;
+                      const ptsNeeded=(neededNextExam/100)*Number(predict.nextExamOf||100);
+                      const impossible=neededNextExam>100;
+                      const easy=neededNextExam<=77;
+
+                      // Overall predictor
+                      const curS=s||0,curP=p||0;
+                      const neededK77=(77*3-curS-curP); // knowledge needed so (k+s+p)/3 ≥ 77
+                      const neededKOverall=Math.max(neededK77,77);
+
+                      return(
+                        <div>
+                          <div style={{background:impossible?C.clayLight:easy?C.sageLight:C.amberLight,borderRadius:8,padding:"10px 12px",marginBottom:8}}>
+                            <div style={{fontSize:12,color:C.muted,marginBottom:2}}>To hit {target}% Knowledge grade:</div>
+                            {n>0&&<div style={{fontSize:12,color:C.muted,marginBottom:6}}>Current exam avg ({n} exam{n>1?"s":""}): <strong>{curAvg?.toFixed(1)}%</strong></div>}
+                            {impossible
+                              ?<div style={{fontSize:14,fontWeight:800,color:C.clay}}>⚠️ Not achievable with one exam — consider talking to your instructor about remediation options.</div>
+                              :<div style={{fontSize:14,fontWeight:800,color:gc(neededNextExam)}}>
+                                Need <strong>{neededNextExam.toFixed(1)}%</strong> on next exam
+                                {predict.nextExamOf&&<span style={{fontSize:12,color:C.muted}}> = {Math.ceil(ptsNeeded)}/{predict.nextExamOf} pts</span>}
+                              </div>
+                            }
+                          </div>
+                          {(s!==null||p!==null)&&(
+                            <div style={{background:C.surfaceAlt,borderRadius:8,padding:"8px 12px",fontSize:12,color:C.ink}}>
+                              <strong>Overall picture:</strong> With Skills={s!==null?s.toFixed(0)+"%":"??"} and Prof={p!==null?p.toFixed(0)+"%":"??"}, you need Knowledge ≥ <strong style={{color:gc(neededKOverall)}}>{neededKOverall.toFixed(1)}%</strong> to pass overall.
+                              {neededKOverall>100&&<span style={{color:C.clay}}> Skills/Prof grades need improvement too.</span>}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
+                  </div>
+
+                  {/* Grades list */}
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+                    <span style={{fontSize:11,fontWeight:700,color:C.muted,textTransform:"uppercase",letterSpacing:"0.06em"}}>Grades ({grades.length})</span>
+                    <Btn sm onClick={()=>openGrade(course.id)}>+ Add Grade</Btn>
+                  </div>
+                  {grades.length===0&&<div style={{fontSize:13,color:C.muted,fontStyle:"italic",marginBottom:8}}>No grades yet — add your first one!</div>}
+                  <div style={{display:"flex",flexDirection:"column",gap:5}}>
+                    {grades.map(gr=>{
+                      const catLabel={exams:"Exam",hesi:"HESI",hw:"HW/Quiz",skills:"Skills",prof:"Prof Skills",medmath:"Med Math"}[gr.cat]||gr.cat;
+                      return(
+                        <div key={gr.id} style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:8,padding:"7px 11px",display:"flex",alignItems:"center",gap:8}}>
+                          <div style={{width:38,height:38,borderRadius:7,background:gc(gr.pct)+"22",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                            <span style={{fontSize:11,fontWeight:800,color:gc(gr.pct)}}>{gr.pct.toFixed(0)}%</span>
+                          </div>
+                          <div style={{flex:1,minWidth:0}}>
+                            <div style={{fontWeight:700,fontSize:13,color:C.ink}}>{gr.title}{gr.late&&<span style={{fontSize:10,color:C.clay,marginLeft:5}}>(−10 late)</span>}</div>
+                            <div style={{fontSize:11,color:C.muted}}>{catLabel}{gr.hesiScore?` · HESI ${gr.hesiScore}`:gr.possible?` · ${gr.earned}/${gr.possible}`:""}</div>
+                          </div>
+                          <Btn v="gh" sm onClick={()=>delGrade(course.id,gr.id)}>🗑️</Btn>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Add Grade Modal */}
+      {gradeModal&&(()=>{
+        const isHesi=gf.cat==="hesi";
+        const rawPct=(!isHesi&&gf.earned&&gf.possible)?(Number(gf.earned)/Number(gf.possible))*100:null;
+        const adjPct=rawPct!==null?(gf.late?Math.max(0,rawPct-10):rawPct):null;
+        const hPct=isHesi?hesiConvert(gf.hesiScore):null;
+        const displayPct=isHesi?hPct:adjPct;
+        return(
+          <Mdl title="Add Grade" onClose={()=>setGradeModal(null)}>
+            <Fld label="Assignment name"><Inp value={gf.title} onChange={e=>setGf(f=>({...f,title:e.target.value}))} placeholder='e.g. "Exam 1 — Vital Signs"'/></Fld>
+            <Fld label="Category">
+              <Sel value={gf.cat} onChange={e=>setGf(f=>({...f,cat:e.target.value}))}>
+                <option value="exams">Unit Exam (counts 60% of Knowledge)</option>
+                <option value="hesi">HESI / Final Exam (counts 30% of Knowledge)</option>
+                <option value="hw">Homework / Quiz (counts 10% of Knowledge)</option>
+                {gradeModal==="f2"&&<option value="medmath">Med Math Exam (≥90% required)</option>}
+                <option value="skills">Skills / Clinical (33⅓% pillar)</option>
+                <option value="prof">Professional Skills (33⅓% pillar)</option>
+              </Sel>
+            </Fld>
+            {isHesi?(
+              <>
+                <Fld label="HESI raw score"><Inp type="number" value={gf.hesiScore} onChange={e=>setGf(f=>({...f,hesiScore:e.target.value}))} placeholder="e.g. 876"/></Fld>
+                {gf.hesiScore&&<div style={{background:gc(hPct)+"22",border:`1px solid ${gc(hPct)}44`,borderRadius:9,padding:"9px 14px",marginBottom:14,textAlign:"center"}}>
+                  <div style={{fontSize:12,color:C.muted}}>HESI {gf.hesiScore} →</div>
+                  <div style={{fontSize:24,fontWeight:800,color:gc(hPct)}}>{hPct}%</div>
+                  {hPct<850&&gradeModal==="comp"&&<div style={{fontSize:12,color:C.clay}}>⚠️ Below 850 — Exit HESI retest required</div>}
+                </div>}
+              </>
+            ):(
+              <>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+                  <Fld label="Points earned"><Inp type="number" value={gf.earned} onChange={e=>setGf(f=>({...f,earned:e.target.value}))} placeholder="84"/></Fld>
+                  <Fld label="Points possible"><Inp type="number" value={gf.possible} onChange={e=>setGf(f=>({...f,possible:e.target.value}))} placeholder="100"/></Fld>
+                </div>
+                {displayPct!==null&&(
+                  <div style={{background:gc(displayPct)+"22",border:`1px solid ${gc(displayPct)}44`,borderRadius:9,padding:"9px 14px",marginBottom:14,textAlign:"center"}}>
+                    <div style={{fontSize:22,fontWeight:800,color:gc(displayPct)}}>{displayPct.toFixed(1)}% — {gl(displayPct)}</div>
+                    {gf.late&&<div style={{fontSize:11,color:C.clay}}>10-pt late penalty applied per MPI</div>}
+                    {displayPct<77&&displayPct>0&&<div style={{fontSize:11,color:C.clay,marginTop:3}}>Below 77% — remediation available. Retest max: 77%</div>}
+                    {displayPct>=90&&gf.cat==="medmath"&&<div style={{fontSize:11,color:C.sage,marginTop:3}}>✓ Med Math requirement met!</div>}
+                  </div>
+                )}
+                <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:14,padding:"8px 12px",background:C.amberLight,borderRadius:8}}>
+                  <input type="checkbox" id="late" checked={gf.late} onChange={e=>setGf(f=>({...f,late:e.target.checked}))} style={{width:15,height:15,accentColor:C.amber}}/>
+                  <label htmlFor="late" style={{fontSize:13,color:C.ink,cursor:"pointer"}}>Exam taken late (−10 pts per MPI)</label>
+                </div>
+              </>
+            )}
+            <Fld label="Notes"><Inp value={gf.notes} onChange={e=>setGf(f=>({...f,notes:e.target.value}))} placeholder="e.g. Weak on cardiac meds"/></Fld>
+            <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}><Btn v="sec" onClick={()=>setGradeModal(null)}>Cancel</Btn><Btn onClick={saveGrade}>Save Grade</Btn></div>
+          </Mdl>
+        );
+      })()}
+    </div>
+  );
+}
+
+
+// ══════════════════════════════════════════════════════════════════════
+//  MODULES VIEW
+// ══════════════════════════════════════════════════════════════════════
+function ModulesView({modules,setModules}){
+  const [expanded,setExpanded]=useState(null);
+  const [modal,setModal]=useState(false);
+  const [editId,setEditId]=useState(null);
+  const [filter,setFilter]=useState("all");
+  const [tf,setTf]=useState({word:"",def:""});
+  const [form,setForm]=useState({name:"",course:"",startDate:"",endDate:"",status:"upcoming",summary:"",objectives:"",keyTerms:[],resources:""});
+
+  const allMods=MODS.map(m=>{const ov=modules.find(s=>s.id===m.id);return ov?{...m,...ov}:m;}).concat(modules.filter(m=>!MODS.find(bm=>bm.id===m.id)));
+
+  function openEdit(m){setEditId(m.id);setForm({name:m.name,course:m.course||"",startDate:m.startDate||"",endDate:m.endDate||"",status:m.status||"upcoming",summary:m.summary||"",objectives:m.objectives||"",keyTerms:m.keyTerms||[],resources:m.resources||""});setTf({word:"",def:""});setModal(true);}
+  function openNew(){setEditId(null);setForm({name:"",course:"",startDate:"",endDate:"",status:"upcoming",summary:"",objectives:"",keyTerms:[],resources:""});setTf({word:"",def:""});setModal(true);}
+  function saveMod(){
+    if(!form.name.trim()) return;
+    if(editId!==null) setModules(ms=>{const has=ms.find(m=>m.id===editId);return has?ms.map(m=>m.id===editId?{...form,id:editId}:m):[...ms,{...form,id:editId}];});
+    else setModules(ms=>[...ms,{...form,id:Date.now()}]);
+    setModal(false);
+  }
+  function addTerm(){if(!tf.word.trim())return;setForm(f=>({...f,keyTerms:[...(f.keyTerms||[]),{id:Date.now(),word:tf.word,definition:tf.def}]}));setTf({word:"",def:""});}
+  function removeTerm(id){setForm(f=>({...f,keyTerms:f.keyTerms.filter(t=>t.id!==id)}));}
+
+  const SC={upcoming:{bg:C.amberLight,t:C.amber},active:{bg:C.sageLight,t:C.sageDark},completed:{bg:C.surfaceAlt,t:C.muted}};
+  const cName=id=>COURSES.find(c=>c.id===id)?.name.split(" ").slice(0,3).join(" ")||"";
+  const shown=allMods.filter(m=>filter==="all"||m.status===filter).sort((a,b)=>(a.startDate||"zzz").localeCompare(b.startDate||"zzz"));
+
+  return(
+    <div>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+        <div>
+          <h2 style={{margin:"0 0 2px",fontFamily:"Georgia,serif",fontSize:21,color:C.ink}}>Module Log</h2>
+          <p style={{margin:0,fontSize:12,color:C.muted}}>12 modules from your MPI · tap any to add dates & study notes</p>
+        </div>
+        <Btn sm onClick={openNew}>+ Add</Btn>
+      </div>
+      <div style={{display:"flex",gap:5,marginBottom:14,flexWrap:"wrap"}}>
+        {["all","upcoming","active","completed"].map(f=><button key={f} onClick={()=>setFilter(f)} style={{background:filter===f?C.sage:C.surfaceAlt,color:filter===f?C.white:C.muted,border:"none",borderRadius:20,padding:"4px 13px",fontWeight:700,fontSize:12,cursor:"pointer",textTransform:"capitalize"}}>{f}</button>)}
+      </div>
+      <div style={{display:"flex",flexDirection:"column",gap:8}}>
+        {shown.map(mod=>{
+          const isOpen=expanded===mod.id;
+          const s=SC[mod.status]||SC.upcoming;
+          return(
+            <div key={mod.id} style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:13,overflow:"hidden"}}>
+              <div style={{padding:"11px 15px",display:"flex",gap:10,alignItems:"center",cursor:"pointer"}} onClick={()=>setExpanded(isOpen?null:mod.id)}>
+                <div style={{width:38,height:38,borderRadius:9,background:s.bg,display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,flexShrink:0}}>📖</div>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{display:"flex",gap:5,alignItems:"center",flexWrap:"wrap",marginBottom:2}}>
+                    <span style={{fontWeight:800,fontSize:13,color:C.ink}}>{mod.name}</span>
+                    <Bdg c={s.bg} t={s.t}>{mod.status}</Bdg>
+                    {mod.keyTerms?.length>0&&<Bdg c={C.purpleLight} t={C.purple}>{mod.keyTerms.length} terms</Bdg>}
+                    {mod.course&&<Bdg c={C.tealLight} t={C.teal}>{cName(mod.course)}</Bdg>}
+                  </div>
+                  {(mod.startDate||mod.endDate)&&<div style={{fontSize:11,color:C.muted}}>{mod.startDate&&mod.endDate?`${mod.startDate} → ${mod.endDate}`:mod.startDate||mod.endDate}</div>}
+                </div>
+                <span style={{color:C.muted,fontSize:14}}>{isOpen?"▲":"▼"}</span>
+              </div>
+              {isOpen&&(
+                <div style={{borderTop:`1px solid ${C.border}`,background:C.bg,padding:"13px 15px"}}>
+                  {mod.summary&&<div style={{marginBottom:10}}><Lbl>Overview</Lbl><p style={{margin:0,fontSize:13,color:C.ink,lineHeight:1.6}}>{mod.summary}</p></div>}
+                  {mod.objectives&&<div style={{background:C.sageLight,borderRadius:9,padding:"9px 13px",marginBottom:9}}><Lbl>Learning Objectives</Lbl><p style={{margin:0,fontSize:12,color:C.sageDark,whiteSpace:"pre-wrap",lineHeight:1.6}}>{mod.objectives}</p></div>}
+                  {mod.keyTerms?.length>0&&<div style={{marginBottom:9}}>
+                    <Lbl>Key Terms ({mod.keyTerms.length})</Lbl>
+                    <div style={{display:"flex",flexDirection:"column",gap:4}}>
+                      {mod.keyTerms.map(t=><div key={t.id} style={{background:C.purpleLight,border:`1px solid ${C.purple}22`,borderRadius:7,padding:"6px 11px"}}>
+                        <span style={{fontWeight:800,fontSize:12,color:C.purple}}>{t.word}</span>
+                        {t.definition&&<span style={{fontSize:12,color:C.ink}}> — {t.definition}</span>}
+                      </div>)}
+                    </div>
+                  </div>}
+                  {mod.resources&&<div style={{marginBottom:9}}><Lbl>Resources</Lbl><p style={{margin:0,fontSize:12,color:C.muted}}>{mod.resources}</p></div>}
+                  <Btn v="sec" sm onClick={()=>openEdit(mod)}>✏️ Edit / Add Dates & Terms</Btn>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+      {modal&&<Mdl title={editId?"Edit Module":"New Module"} onClose={()=>setModal(false)} wide>
+        <Fld label="Module name"><Inp value={form.name} onChange={e=>setForm(f=>({...f,name:e.target.value}))} placeholder="Topic name"/></Fld>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10}}>
+          <Fld label="Start date"><Inp type="date" value={form.startDate} onChange={e=>setForm(f=>({...f,startDate:e.target.value}))}/></Fld>
+          <Fld label="End date"><Inp type="date" value={form.endDate} onChange={e=>setForm(f=>({...f,endDate:e.target.value}))}/></Fld>
+          <Fld label="Status"><Sel value={form.status} onChange={e=>setForm(f=>({...f,status:e.target.value}))}><option value="upcoming">Upcoming</option><option value="active">Active</option><option value="completed">Completed</option></Sel></Fld>
+        </div>
+        <Fld label="Course"><Sel value={form.course} onChange={e=>setForm(f=>({...f,course:e.target.value}))}><option value="">-- Select course --</option>{COURSES.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</Sel></Fld>
+        <Fld label="Overview"><TA value={form.summary} onChange={e=>setForm(f=>({...f,summary:e.target.value}))}/></Fld>
+        <Fld label="Learning objectives"><TA value={form.objectives} onChange={e=>setForm(f=>({...f,objectives:e.target.value}))}/></Fld>
+        <div style={{marginBottom:14}}>
+          <Lbl>Key Terms</Lbl>
+          {(form.keyTerms||[]).map(t=><div key={t.id} style={{display:"flex",gap:6,alignItems:"center",padding:"3px 0"}}>
+            <span style={{flex:1,fontSize:12,color:C.ink}}><strong>{t.word}</strong>{t.definition?" — "+t.definition:""}</span>
+            <Btn v="gh" sm onClick={()=>removeTerm(t.id)}>✕</Btn>
+          </div>)}
+          <div style={{display:"grid",gridTemplateColumns:"1fr 2fr auto",gap:7,marginTop:7,alignItems:"end"}}>
+            <div><Lbl>Term</Lbl><Inp value={tf.word} onChange={e=>setTf(f=>({...f,word:e.target.value}))} placeholder="Bradycardia"/></div>
+            <div><Lbl>Definition</Lbl><Inp value={tf.def} onChange={e=>setTf(f=>({...f,def:e.target.value}))} placeholder="HR < 60 bpm"/></div>
+            <Btn sm onClick={addTerm} sx={{marginBottom:1}}>Add</Btn>
+          </div>
+        </div>
+        <Fld label="Resources / chapters"><Inp value={form.resources} onChange={e=>setForm(f=>({...f,resources:e.target.value}))} placeholder="Ch. 12–14, ATI Module 3"/></Fld>
+        <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}><Btn v="sec" onClick={()=>setModal(false)}>Cancel</Btn><Btn onClick={saveMod}>Save</Btn></div>
+      </Mdl>}
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════════════
+//  VITALS
+// ══════════════════════════════════════════════════════════════════════
+function VitalsView(){
+  const [exp,setExp]=useState(null);
+  const [q,setQ]=useState("");
+  const shown=VITALS.filter(v=>!q||v.group.toLowerCase().includes(q.toLowerCase())||v.rows.some(r=>r[0].toLowerCase().includes(q.toLowerCase())||r[1].toLowerCase().includes(q.toLowerCase())));
+  return(
+    <div>
+      <h2 style={{margin:"0 0 4px",fontFamily:"Georgia,serif",fontSize:21,color:C.ink}}>Vital Signs Reference</h2>
+      <p style={{margin:"0 0 12px",fontSize:12,color:C.muted}}>Normal ranges + nursing tips — quick access during clinicals</p>
+      <input value={q} onChange={e=>setQ(e.target.value)} placeholder="🔍 Search…" style={{...IS,maxWidth:260,marginBottom:14}}/>
+      <div style={{display:"flex",flexDirection:"column",gap:9}}>
+        {shown.map(v=>{const isOpen=exp===v.group;return(
+          <div key={v.group} style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:13,overflow:"hidden"}}>
+            <div style={{padding:"12px 15px",display:"flex",alignItems:"center",gap:10,cursor:"pointer",background:isOpen?v.color:C.surface}} onClick={()=>setExp(isOpen?null:v.group)}>
+              <div style={{width:38,height:38,borderRadius:9,background:v.color,border:`2px solid ${v.accent}44`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,flexShrink:0}}>{v.icon}</div>
+              <span style={{fontWeight:800,fontSize:14,color:C.ink,flex:1}}>{v.group}</span>
+              <span style={{color:C.muted}}>{isOpen?"▲":"▼"}</span>
+            </div>
+            {isOpen&&<div style={{borderTop:`1px solid ${C.border}`,padding:"13px 15px",background:C.bg}}>
+              <table style={{width:"100%",borderCollapse:"collapse",marginBottom:10}}>
+                <thead><tr>{["Category","Range","Note"].map(h=><th key={h} style={{textAlign:"left",fontSize:10,fontWeight:700,color:C.muted,textTransform:"uppercase",letterSpacing:"0.06em",padding:"3px 7px",borderBottom:`2px solid ${C.border}`}}>{h}</th>)}</tr></thead>
+                <tbody>{v.rows.map((row,i)=><tr key={i} style={{background:i%2===0?C.surface:C.bg}}>
+                  <td style={{padding:"6px 7px",fontSize:12,fontWeight:700,color:C.ink,borderBottom:`1px solid ${C.border}`}}>{row[0]}</td>
+                  <td style={{padding:"6px 7px",fontSize:12,fontWeight:800,color:v.accent,borderBottom:`1px solid ${C.border}`,whiteSpace:"nowrap"}}>{row[1]}</td>
+                  <td style={{padding:"6px 7px",fontSize:11,color:C.muted,borderBottom:`1px solid ${C.border}`}}>{row[2]}</td>
+                </tr>)}</tbody>
+              </table>
+              <div style={{background:v.color,border:`1px solid ${v.accent}44`,borderRadius:9,padding:"9px 13px"}}>
+                <div style={{fontSize:10,fontWeight:700,color:v.accent,textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:3}}>🩺 Nursing Tip</div>
+                <div style={{fontSize:12,color:C.ink,lineHeight:1.6}}>{v.tip}</div>
+              </div>
+            </div>}
+          </div>
+        );})}
+      </div>
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════════════
+//  CALENDAR
+// ══════════════════════════════════════════════════════════════════════
+function CalendarView({tasks,modules,onDayClick}){
+  const allMods=MODS.map(m=>{const ov=modules.find(s=>s.id===m.id);return ov?{...m,...ov}:m;}).concat(modules.filter(m=>!MODS.find(bm=>bm.id===m.id)));
+  const [vy,setVy]=useState(TODAY.getFullYear());
+  const [vm,setVm]=useState(TODAY.getMonth());
+  const dim=getDIM(vy,vm),fdw=getFDW(vy,vm),tk=dateKey(TODAY);
+  const prev=()=>{if(vm===0){setVm(11);setVy(y=>y-1);}else setVm(m=>m-1);};
+  const next=()=>{if(vm===11){setVm(0);setVy(y=>y+1);}else setVm(m=>m+1);};
+  const cells=[];for(let i=0;i<fdw;i++)cells.push(null);for(let d=1;d<=dim;d++)cells.push(d);
+  return(
+    <div>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:18}}>
+        <Btn v="sec" sm onClick={prev}>‹</Btn>
+        <span style={{fontFamily:"Georgia,serif",fontSize:20,fontWeight:700,color:C.ink}}>{MONTHS[vm]} {vy}</span>
+        <Btn v="sec" sm onClick={next}>›</Btn>
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:2,marginBottom:3}}>
+        {DAYS.map(d=><div key={d} style={{textAlign:"center",fontSize:10,fontWeight:700,color:C.muted,padding:"3px 0",textTransform:"uppercase"}}>{d}</div>)}
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:3}}>
+        {cells.map((day,i)=>{
+          if(!day) return <div key={`e${i}`}/>;
+          const dk=`${vy}-${pad(vm+1)}-${pad(day)}`;
+          const dt=tasks.filter(t=>t.dueDate===dk);
+          const am=allMods.filter(m=>m.startDate&&m.endDate&&m.startDate<=dk&&m.endDate>=dk);
+          const it=dk===tk;
+          return(
+            <div key={dk} onClick={()=>onDayClick(dk)} style={{minHeight:62,background:it?C.sageLight:C.surfaceAlt,borderRadius:9,padding:"4px 5px",cursor:"pointer",border:it?`2px solid ${C.sage}`:"2px solid transparent"}}>
+              <div style={{fontSize:11,fontWeight:it?800:600,color:it?C.sageDark:C.ink,marginBottom:2}}>{day}</div>
+              {am.slice(0,1).map(m=><div key={m.id} style={{fontSize:8,color:C.purple,background:C.purpleLight,borderRadius:3,padding:"1px 3px",marginBottom:1,overflow:"hidden",whiteSpace:"nowrap",textOverflow:"ellipsis"}}>📖 {m.name.split("—")[0].trim().slice(0,14)}</div>)}
+              {dt.slice(0,2).map(t=><div key={t.id} style={{fontSize:8,color:PRI[t.priority]?.text||C.muted,background:PRI[t.priority]?.bg||C.sageLight,borderRadius:3,padding:"1px 3px",marginBottom:1,overflow:"hidden",whiteSpace:"nowrap",textOverflow:"ellipsis"}}>{t.title}</div>)}
+              {dt.length>2&&<div style={{fontSize:7,color:C.muted}}>+{dt.length-2}</div>}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════════════
+//  TASKS
+// ══════════════════════════════════════════════════════════════════════
+function TasksView({tasks,setTasks,prefillDate}){
+  const [modal,setModal]=useState(false);
+  const [edit,setEdit]=useState(null);
+  const [filter,setFilter]=useState("all");
+  const [form,setForm]=useState({title:"",dueDate:prefillDate||"",priority:"medium",category:"",notes:"",reminder:""});
+  useEffect(()=>{if(prefillDate)setForm(f=>({...f,dueDate:prefillDate}));},[prefillDate]);
+  function openNew(){setEdit(null);setForm({title:"",dueDate:prefillDate||"",priority:"medium",category:"",notes:"",reminder:""});setModal(true);}
+  function openEdit(t){setEdit(t);setForm({...t});setModal(true);}
+  function save(){
+    if(!form.title.trim())return;
+    if(edit)setTasks(ts=>ts.map(t=>t.id===edit.id?{...form,id:t.id}:t));
+    else setTasks(ts=>[...ts,{...form,id:Date.now(),done:false}]);
+    if(form.reminder&&form.dueDate){Notification.requestPermission().then(p=>{if(p==="granted"){const d=new Date(`${form.dueDate}T${form.reminder}`),ms=d.getTime()-Date.now();if(ms>0)setTimeout(()=>new Notification(`📋 ${form.title}`,{body:form.notes||"NursePad reminder"}),ms);}});}
+    setModal(false);
+  }
+  function tog(id){setTasks(ts=>ts.map(t=>t.id===id?{...t,done:!t.done}:t));}
+  function del(id){setTasks(ts=>ts.filter(t=>t.id!==id));}
+  const shown=tasks.filter(t=>filter==="done"?t.done:filter==="pending"?!t.done:true).sort((a,b)=>({high:0,medium:1,low:2}[a.priority]||1)-({high:0,medium:1,low:2}[b.priority]||1));
+  return(
+    <div>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16,flexWrap:"wrap",gap:8}}>
+        <div style={{display:"flex",gap:5}}>{["all","pending","done"].map(f=><button key={f} onClick={()=>setFilter(f)} style={{background:filter===f?C.sage:C.surfaceAlt,color:filter===f?C.white:C.muted,border:"none",borderRadius:20,padding:"5px 14px",fontWeight:700,fontSize:12,cursor:"pointer",textTransform:"capitalize"}}>{f}</button>)}</div>
+        <Btn onClick={openNew}>+ Add Task</Btn>
+      </div>
+      {shown.length===0&&<div style={{textAlign:"center",padding:"40px 0",color:C.muted}}><div style={{fontSize:32,marginBottom:6}}>✅</div><div style={{fontWeight:600}}>No tasks here!</div></div>}
+      <div style={{display:"flex",flexDirection:"column",gap:8}}>
+        {shown.map(task=>(
+          <div key={task.id} style={{background:task.done?C.surfaceAlt:C.surface,border:`1px solid ${C.border}`,borderRadius:11,padding:"11px 13px",display:"flex",gap:10,alignItems:"flex-start",opacity:task.done?.6:1}}>
+            <input type="checkbox" checked={!!task.done} onChange={()=>tog(task.id)} style={{marginTop:3,width:17,height:17,accentColor:C.sage,cursor:"pointer",flexShrink:0}}/>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap",marginBottom:3}}>
+                <span style={{fontWeight:700,fontSize:14,color:C.ink,textDecoration:task.done?"line-through":"none"}}>{task.title}</span>
+                <Bdg c={PRI[task.priority]?.bg} t={PRI[task.priority]?.text}>{task.priority}</Bdg>
+                {task.category&&<Bdg>{task.category}</Bdg>}
+              </div>
+              {task.dueDate&&<div style={{fontSize:11,color:C.muted}}>📅 {task.dueDate}{task.reminder?` · ⏰ ${task.reminder}`:""}</div>}
+              {task.notes&&<div style={{fontSize:11,color:C.muted,marginTop:2}}>{task.notes}</div>}
+            </div>
+            <div style={{display:"flex",gap:3,flexShrink:0}}>
+              <Btn v="gh" sm onClick={()=>openEdit(task)}>✏️</Btn>
+              <Btn v="gh" sm onClick={()=>del(task.id)}>🗑️</Btn>
+            </div>
+          </div>
+        ))}
+      </div>
+      {modal&&<Mdl title={edit?"Edit Task":"New Task"} onClose={()=>setModal(false)}>
+        <Fld label="Title"><Inp value={form.title} onChange={e=>setForm(f=>({...f,title:e.target.value}))} placeholder='e.g. "Study Exam 2"'/></Fld>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+          <Fld label="Due date"><Inp type="date" value={form.dueDate} onChange={e=>setForm(f=>({...f,dueDate:e.target.value}))}/></Fld>
+          <Fld label="Reminder"><Inp type="time" value={form.reminder} onChange={e=>setForm(f=>({...f,reminder:e.target.value}))}/></Fld>
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+          <Fld label="Priority"><Sel value={form.priority} onChange={e=>setForm(f=>({...f,priority:e.target.value}))}><option value="high">High</option><option value="medium">Medium</option><option value="low">Low</option></Sel></Fld>
+          <Fld label="Category"><Inp value={form.category} onChange={e=>setForm(f=>({...f,category:e.target.value}))} placeholder="Exam, Clinical…"/></Fld>
+        </div>
+        <Fld label="Notes"><TA value={form.notes} onChange={e=>setForm(f=>({...f,notes:e.target.value}))}/></Fld>
+        <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}><Btn v="sec" onClick={()=>setModal(false)}>Cancel</Btn><Btn onClick={save}>Save Task</Btn></div>
+      </Mdl>}
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════════════
+//  DRUG CARDS
+// ══════════════════════════════════════════════════════════════════════
+function MedView({meds,setMeds}){
+  const [modal,setModal]=useState(false);
+  const [editMed,setEditMed]=useState(null);
+  const [search,setSearch]=useState("");
+  const [cf,setCf]=useState("All");
+  const [exp,setExp]=useState(null);
+  const blank={name:"",generic:"",category:"Other",classification:"",route:"",dose:"",action:"",sideEffects:"",nursing:"",contraindications:"",notes:""};
+  const [form,setForm]=useState(blank);
+  function openNew(){setEditMed(null);setForm(blank);setModal(true);}
+  function openEdit(m){setEditMed(m);setForm({...m});setModal(true);}
+  function saveMed(){if(!form.name.trim())return;if(editMed)setMeds(ms=>ms.map(m=>m.id===editMed.id?{...form,id:m.id}:m));else setMeds(ms=>[...ms,{...form,id:Date.now()}]);setModal(false);}
+  function del(id){setMeds(ms=>ms.filter(m=>m.id!==id));}
+  const shown=meds.filter(m=>{const q=search.toLowerCase();return(!q||m.name.toLowerCase().includes(q)||(m.generic||"").toLowerCase().includes(q)||(m.classification||"").toLowerCase().includes(q))&&(cf==="All"||m.category===cf);});
+  const IB=({label,val,bg})=>val?<div style={{background:bg,borderRadius:7,padding:"7px 11px",marginBottom:5}}><Lbl>{label}</Lbl><div style={{fontSize:12,color:C.ink,whiteSpace:"pre-wrap"}}>{val}</div></div>:null;
+  return(
+    <div>
+      <div style={{display:"flex",gap:8,marginBottom:14,flexWrap:"wrap"}}>
+        <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="🔍 Search…" style={{...IS,flex:1,minWidth:130}}/>
+        <Sel value={cf} onChange={e=>setCf(e.target.value)} style={{...IS,width:"auto"}}><option value="All">All</option>{DCAT.map(c=><option key={c}>{c}</option>)}</Sel>
+        <Btn onClick={openNew}>+ Add Drug</Btn>
+      </div>
+      {shown.length===0&&<div style={{textAlign:"center",padding:"36px 0",color:C.muted}}><div style={{fontSize:32,marginBottom:6}}>💊</div><div style={{fontWeight:600}}>{search?"No match":"Add your first drug card!"}</div></div>}
+      <div style={{display:"flex",flexDirection:"column",gap:8}}>
+        {shown.map(med=>(
+          <div key={med.id} style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:12,overflow:"hidden"}}>
+            <div onClick={()=>setExp(exp===med.id?null:med.id)} style={{padding:"11px 14px",cursor:"pointer",display:"flex",alignItems:"center",gap:9}}>
+              <div style={{width:34,height:34,borderRadius:8,background:C.sageLight,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,flexShrink:0}}>💊</div>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{display:"flex",gap:5,alignItems:"center",flexWrap:"wrap"}}>
+                  <span style={{fontWeight:800,fontSize:13,color:C.ink}}>{med.name}</span>
+                  {med.generic&&<span style={{fontSize:11,color:C.muted,fontStyle:"italic"}}>({med.generic})</span>}
+                  <Bdg>{med.category}</Bdg>
+                </div>
+                {med.classification&&<div style={{fontSize:11,color:C.muted}}>{med.classification}</div>}
+              </div>
+              <span style={{color:C.muted,fontSize:13}}>{exp===med.id?"▲":"▼"}</span>
+            </div>
+            {exp===med.id&&<div style={{borderTop:`1px solid ${C.border}`,padding:"12px 14px",background:C.bg}}>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:8}}>
+                {med.route&&<div><Lbl>Route</Lbl><div style={{fontSize:12,color:C.ink}}>{med.route}</div></div>}
+                {med.dose&&<div><Lbl>Dose</Lbl><div style={{fontSize:12,color:C.ink}}>{med.dose}</div></div>}
+              </div>
+              <IB label="Action" val={med.action} bg={C.sageLight}/>
+              <IB label="Side Effects" val={med.sideEffects} bg={C.amberLight}/>
+              <IB label="Nursing Considerations" val={med.nursing} bg={C.sageLight}/>
+              <IB label="Contraindications" val={med.contraindications} bg={C.clayLight}/>
+              <IB label="Notes / Mnemonics" val={med.notes} bg={C.surfaceAlt}/>
+              <div style={{display:"flex",gap:6,marginTop:8}}><Btn v="sec" sm onClick={()=>openEdit(med)}>✏️ Edit</Btn><Btn v="dan" sm onClick={()=>del(med.id)}>🗑️</Btn></div>
+            </div>}
+          </div>
+        ))}
+      </div>
+      {modal&&<Mdl title={editMed?"Edit Drug":"New Drug Card"} onClose={()=>setModal(false)}>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+          <Fld label="Brand name"><Inp value={form.name} onChange={e=>setForm(f=>({...f,name:e.target.value}))} placeholder="Lasix"/></Fld>
+          <Fld label="Generic name"><Inp value={form.generic} onChange={e=>setForm(f=>({...f,generic:e.target.value}))} placeholder="furosemide"/></Fld>
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+          <Fld label="Category"><Sel value={form.category} onChange={e=>setForm(f=>({...f,category:e.target.value}))}>{DCAT.map(c=><option key={c}>{c}</option>)}</Sel></Fld>
+          <Fld label="Classification"><Inp value={form.classification} onChange={e=>setForm(f=>({...f,classification:e.target.value}))} placeholder="Loop diuretic"/></Fld>
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+          <Fld label="Route"><Inp value={form.route} onChange={e=>setForm(f=>({...f,route:e.target.value}))} placeholder="PO, IV, IM"/></Fld>
+          <Fld label="Dose"><Inp value={form.dose} onChange={e=>setForm(f=>({...f,dose:e.target.value}))} placeholder="20–80 mg/day"/></Fld>
+        </div>
+        {[["Action","action","How it works…"],["Side Effects","sideEffects","Common + serious…"],["Nursing Considerations","nursing","Monitor, teach…"],["Contraindications","contraindications","Who can't take it…"],["Notes / Mnemonics","notes","Memory tricks…"]].map(([l,k,ph])=><Fld key={k} label={l}><TA value={form[k]} onChange={e=>setForm(f=>({...f,[k]:e.target.value}))} placeholder={ph}/></Fld>)}
+        <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}><Btn v="sec" onClick={()=>setModal(false)}>Cancel</Btn><Btn onClick={saveMed}>Save</Btn></div>
+      </Mdl>}
+    </div>
+  );
+}
+
+
+// ══════════════════════════════════════════════════════════════════════
+//  SETTINGS / PERSONALIZATION
+// ══════════════════════════════════════════════════════════════════════
+const THEMES = [
+  { id:"bubblegum", name:"Bubble Gum 🩷",  description:"Girly & fun — your signature",
+    sage:"#E0638A", sageDark:"#B8476C", sageLight:"#FADADF", amber:"#F0A500", amberLight:"#FEF0CC", bg:"#FFF5F8" },
+  { id:"purple",    name:"Pretty Purple 💜", description:"Lavender dreams",
+    sage:"#9B59B6", sageDark:"#7D3C98", sageLight:"#EDD6F5", amber:"#E91E8C", amberLight:"#FCE4F3", bg:"#FBF5FF" },
+  { id:"hotpink",   name:"Hot Girl Pink 🌸", description:"Bold & fierce",
+    sage:"#D81B60", sageDark:"#AD1457", sageLight:"#FCCDE5", amber:"#FF6D00", amberLight:"#FFE0B2", bg:"#FFF0F5" },
+  { id:"cotton",    name:"Cotton Candy 🍭",  description:"Pastel soft & sweet",
+    sage:"#CE93D8", sageDark:"#AB47BC", sageLight:"#F3E5F5", amber:"#80DEEA", amberLight:"#E0F7FA", bg:"#FEF6FF" },
+  { id:"rosegold",  name:"Rose Gold ✨",     description:"Glam & elegant",
+    sage:"#C2846A", sageDark:"#9E5E48", sageLight:"#F5DDD4", amber:"#B8860B", amberLight:"#F5EAC8", bg:"#FFF8F5" },
+  { id:"mauve",     name:"Mauve Moment 🌷",  description:"Dusty rose & chic",
+    sage:"#A0697A", sageDark:"#7A4A58", sageLight:"#F0D9DF", amber:"#C4912A", amberLight:"#F5E8C8", bg:"#FDF8F9" },
+  { id:"sage",      name:"Sage & Amber 🌿",  description:"Warm & grounded",
+    sage:"#5C7A6B", sageDark:"#3D5249", sageLight:"#D4E4DC", amber:"#C97D3A", amberLight:"#F5E4CE", bg:"#F7F4EF" },
+  { id:"midnight",  name:"Midnight 🌙",      description:"Dark mode — sleek",
+    sage:"#CE93D8", sageDark:"#9C27B0", sageLight:"#2D1B36", amber:"#F48FB1", amberLight:"#3A1F2A", bg:"#1A0F2E" },
+];
+
+function SettingsView({ profile, setProfile, themeId, setThemeId }) {
+  const [form, setForm] = useState({ ...profile });
+  const [saved, setSaved] = useState(false);
+
+  function saveProfile() {
+    setProfile(form);
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
+  }
+
+  const isDark = themeId === "midnight";
+
+  return (
+    <div>
+      <h2 style={{ margin:"0 0 4px", fontFamily:"Georgia,serif", fontSize:21, color:C.ink }}>My Profile</h2>
+      <p style={{ margin:"0 0 20px", fontSize:12, color:C.muted }}>Personalize your NursePad experience</p>
+
+      {/* Name card */}
+      <div style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:14, padding:"18px 20px", marginBottom:18 }}>
+        <div style={{ display:"flex", alignItems:"center", gap:16, marginBottom:18 }}>
+          <div style={{ width:64, height:64, borderRadius:"50%", background:`linear-gradient(135deg,${C.sage},${C.sageDark})`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:28, flexShrink:0 }}>
+            {form.emoji || "🩺"}
+          </div>
+          <div>
+            <div style={{ fontFamily:"Georgia,serif", fontSize:20, fontWeight:700, color:C.ink }}>
+              {form.name ? `Nurse ${form.name}` : "Nurse ___"}
+            </div>
+            <div style={{ fontSize:12, color:C.muted }}>Lake Tech LPN 2025–2026</div>
+          </div>
+        </div>
+
+        <Fld label="Your first name">
+          <Inp value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="e.g. Jasmine" />
+        </Fld>
+
+        <Fld label="Pick your icon">
+          <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
+            {["🩺","💉","🏥","💊","🫀","🧬","⚕️","🌿","⭐","🔥","💪","🌸"].map(em => (
+              <button key={em} onClick={() => setForm(f => ({ ...f, emoji: em }))}
+                style={{ fontSize:24, background: form.emoji===em ? C.sageLight : C.surfaceAlt, border: form.emoji===em ? `2px solid ${C.sage}` : "2px solid transparent", borderRadius:10, padding:"6px 10px", cursor:"pointer" }}>
+                {em}
+              </button>
+            ))}
+          </div>
+        </Fld>
+
+        <Fld label="Motivational motto (shows on home screen)">
+          <Inp value={form.motto} onChange={e => setForm(f => ({ ...f, motto: e.target.value }))} placeholder='e.g. "Future LPN — unstoppable!"' />
+        </Fld>
+
+        <Fld label="Current course">
+          <Sel value={form.course} onChange={e => setForm(f => ({ ...f, course: e.target.value }))}>
+            <option value="">-- Select your current course --</option>
+            {COURSES.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </Sel>
+        </Fld>
+
+        <div style={{ display:"flex", gap:10, alignItems:"center" }}>
+          <Btn onClick={saveProfile}>Save Profile</Btn>
+          {saved && <span style={{ fontSize:13, color:C.sage, fontWeight:700 }}>✓ Saved!</span>}
+        </div>
+      </div>
+
+      {/* Theme picker */}
+      <div style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:14, padding:"18px 20px", marginBottom:18 }}>
+        <div style={{ fontWeight:700, fontSize:15, color:C.ink, marginBottom:4 }}>🎨 Color Theme</div>
+        <div style={{ fontSize:12, color:C.muted, marginBottom:14 }}>Pick a theme that fits your vibe — changes the whole app</div>
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
+          {THEMES.map(t => (
+            <div key={t.id} onClick={() => setThemeId(t.id)}
+              style={{ borderRadius:12, overflow:"hidden", border: themeId===t.id ? `3px solid ${t.sage}` : `2px solid ${C.border}`, cursor:"pointer" }}>
+              {/* Color preview bar */}
+              <div style={{ height:32, background:`linear-gradient(90deg,${t.sage},${t.amber},${t.sageLight})` }} />
+              <div style={{ padding:"8px 10px", background:t.bg }}>
+                <div style={{ fontWeight:700, fontSize:13, color: t.id==="midnight"?"#E0E8F0":C.ink }}>{t.name}</div>
+                <div style={{ fontSize:11, color: t.id==="midnight"?"#8899AA":C.muted }}>{t.description}</div>
+                {themeId===t.id && <div style={{ fontSize:11, color:t.sage, fontWeight:700, marginTop:3 }}>✓ Active</div>}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Quick reference card */}
+      <div style={{ background:C.amberLight, border:`1px solid ${C.amber}44`, borderRadius:14, padding:"14px 18px" }}>
+        <div style={{ fontWeight:700, fontSize:13, color:C.amber, marginBottom:8 }}>📋 Quick Reference — 25-26 MPI</div>
+        {[
+          ["Passing threshold","77% in ALL 3 pillars (K/S/P)"],
+          ["Missed exam penalty","−10 points per MPI"],
+          ["Retest max score","77% (can't score higher on retest)"],
+          ["Retests allowed","Max 2 per course (1 for Comprehensive)"],
+          ["Late HW penalty","−20 points"],
+          ["Med Math minimum","90% — 2 attempts max"],
+          ["HESI ≥850","Correlated with NCLEX-PN success"],
+          ["Max absences","67.5 hrs total (5% of 1350)"],
+          ["Absence intervention","15 hrs → counseling, 30 hrs → coordinator, 45 hrs → retention specialist"],
+          ["Tardy intervention","2 late → −5 pts prof, 4 late → −10 pts, 5+ → SIT meeting"],
+          ["Min hours to graduate","1282.5 hrs (95% of 1350)"],
+          ["Coordinator","Jessica Valente, DNP — ext. 1843"],
+        ].map(([label, val]) => (
+          <div key={label} style={{ display:"flex", gap:10, padding:"5px 0", borderBottom:`1px solid ${C.amber}22`, flexWrap:"wrap" }}>
+            <span style={{ fontSize:12, fontWeight:700, color:C.ink, minWidth:160 }}>{label}</span>
+            <span style={{ fontSize:12, color:C.muted, flex:1 }}>{val}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════════════
+//  DASHBOARD
+// ══════════════════════════════════════════════════════════════════════
+function Dashboard({ tasks, meds, modules, gpa, profile, onNavigate }) {
+  const todayKey = dateKey(TODAY);
+  const urgent = tasks.filter(t => !t.done && t.dueDate && t.dueDate <= todayKey);
+  const upcoming = tasks.filter(t => !t.done && t.dueDate > todayKey).sort((a,b) => a.dueDate.localeCompare(b.dueDate)).slice(0,4);
+  const done = tasks.filter(t => t.done).length;
+  const pct = tasks.length ? Math.round((done/tasks.length)*100) : 0;
+  const allMods = MODS.map(m => { const ov = modules.find(s => s.id===m.id); return ov ? {...m,...ov} : m; });
+  const activeMod = allMods.find(m => m.startDate && m.endDate && m.startDate<=todayKey && m.endDate>=todayKey);
+  const courses = COURSES.map(c => { const saved=(gpa.courses||[]).find(s=>s.id===c.id)||{grades:[]}; return{...c,grades:saved.grades||[]}; });
+  const coursesWithData = courses.filter(c => c.grades.length > 0);
+
+  const greeting = profile?.name ? `You've got this, Nurse ${profile.name}! ${profile.emoji||"💪"}` : "You've got this, Nurse! 💪";
+  const motto = profile?.motto;
+
+  const MiniTask = ({ task }) => (
+    <div style={{ display:"flex", gap:7, alignItems:"center", padding:"4px 0", borderBottom:`1px solid rgba(0,0,0,.06)` }}>
+      <span style={{ width:5, height:5, borderRadius:99, background:PRI[task.priority]?.dot||C.sage, flexShrink:0 }}/>
+      <span style={{ fontSize:12, color:C.ink, flex:1, overflow:"hidden", whiteSpace:"nowrap", textOverflow:"ellipsis" }}>{task.title}</span>
+      {task.dueDate && <span style={{ fontSize:10, color:C.muted, flexShrink:0 }}>{task.dueDate}</span>}
+    </div>
+  );
+
+  return (
+    <div>
+      <div style={{ background:`linear-gradient(135deg,${C.sage},${C.sageDark})`, borderRadius:14, padding:"20px 22px", marginBottom:16, color:C.white }}>
+        <div style={{ fontSize:11, opacity:.8, marginBottom:2, textTransform:"uppercase", letterSpacing:"0.1em" }}>{DAYS[TODAY.getDay()]} · {MONTHS[TODAY.getMonth()]} {TODAY.getDate()}, {TODAY.getFullYear()}</div>
+        <div style={{ fontFamily:"Georgia,serif", fontSize:21, fontWeight:700, marginBottom:motto?4:6 }}>{greeting}</div>
+        {motto && <div style={{ fontSize:12, opacity:.9, fontStyle:"italic", marginBottom:6 }}>"{motto}"</div>}
+        {activeMod
+          ? <div style={{ fontSize:12, background:"rgba(255,255,255,.15)", borderRadius:7, padding:"5px 11px", display:"inline-block" }}>📖 Active: <strong>{activeMod.name.length>38?activeMod.name.slice(0,38)+"…":activeMod.name}</strong></div>
+          : <div style={{ fontSize:12, opacity:.85 }}>{urgent.length>0?`${urgent.length} task${urgent.length>1?"s":""} need attention today`:"Nothing urgent — stay ahead of the curve!"}</div>
+        }
+      </div>
+
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:8, marginBottom:14 }}>
+        {[["📋","Tasks",tasks.length,C.sage,"tasks"],["⚡","Urgent",urgent.length,urgent.length>0?C.clay:C.sage,"tasks"],["🎓","Courses",COURSES.length,C.purple,"grades"],["💊","Drugs",meds.length,C.teal,"meds"]].map(([icon,label,val,color,tab])=>(
+          <div key={label} onClick={()=>onNavigate(tab)} style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:12, padding:"11px 7px", textAlign:"center", cursor:"pointer" }}>
+            <div style={{ fontSize:18, marginBottom:1 }}>{icon}</div>
+            <div style={{ fontSize:20, fontWeight:800, color, fontFamily:"Georgia,serif" }}>{val}</div>
+            <div style={{ fontSize:9, color:C.muted, textTransform:"uppercase", letterSpacing:"0.06em" }}>{label}</div>
+          </div>
+        ))}
+      </div>
+
+      <div style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:12, padding:"13px 16px", marginBottom:12 }}>
+        <div style={{ display:"flex", justifyContent:"space-between", marginBottom:6 }}><span style={{ fontWeight:700, fontSize:13, color:C.ink }}>Task progress</span><span style={{ fontSize:12, color:C.muted }}>{done}/{tasks.length}</span></div>
+        <div style={{ background:C.surfaceAlt, borderRadius:99, height:7, overflow:"hidden" }}><div style={{ width:`${pct}%`, background:`linear-gradient(90deg,${C.sage},${C.amber})`, height:"100%", borderRadius:99, transition:"width .5s" }}/></div>
+        <div style={{ fontSize:11, color:C.muted, marginTop:3 }}>{pct}% complete</div>
+      </div>
+
+      {coursesWithData.length > 0 && (
+        <div style={{ background:C.purpleLight, borderRadius:12, padding:"12px 15px", marginBottom:12 }}>
+          <div style={{ fontWeight:700, fontSize:11, color:C.purple, textTransform:"uppercase", letterSpacing:"0.07em", marginBottom:8 }}>🎓 Real Grade Summary</div>
+          {coursesWithData.map(c => {
+            const { overall, k, s, p } = calcOverall(c.grades);
+            const below = [k!==null&&k<77?"K":null,s!==null&&s<77?"S":null,p!==null&&p<77?"P":null].filter(Boolean);
+            return (
+              <div key={c.id} style={{ display:"flex", alignItems:"center", gap:7, padding:"4px 0", borderBottom:`1px solid ${C.purple}22` }}>
+                <span style={{ flex:1, fontSize:12, fontWeight:700, color:C.ink }}>{c.name.split(" ").slice(0,3).join(" ")}</span>
+                {overall!==null && <span style={{ fontSize:12, fontWeight:800, color:gc(overall) }}>{overall.toFixed(1)}%</span>}
+                {below.length>0 ? <Bdg c={C.clayLight} t={C.clay}>⚠️ {below.join(",")}</Bdg> : overall!==null ? <Bdg c={C.sageLight} t={C.sageDark}>✓</Bdg> : null}
+              </div>
+            );
+          })}
+          <div style={{ fontSize:11, color:C.purple, marginTop:6, cursor:"pointer", fontWeight:700 }} onClick={()=>onNavigate("grades")}>View full predictor →</div>
+        </div>
+      )}
+
+      {urgent.length>0 && <div style={{ background:C.clayLight, borderRadius:12, padding:"12px 14px", marginBottom:10 }}>
+        <div style={{ fontWeight:700, fontSize:11, color:C.clay, textTransform:"uppercase", letterSpacing:"0.07em", marginBottom:7 }}>⚡ Needs Attention</div>
+        {urgent.slice(0,4).map(t => <MiniTask key={t.id} task={t}/>)}
+      </div>}
+      {upcoming.length>0 && <div style={{ background:C.amberLight, borderRadius:12, padding:"12px 14px" }}>
+        <div style={{ fontWeight:700, fontSize:11, color:C.amber, textTransform:"uppercase", letterSpacing:"0.07em", marginBottom:7 }}>📅 Coming Up</div>
+        {upcoming.map(t => <MiniTask key={t.id} task={t}/>)}
+      </div>}
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════════════
+//  ROOT APP
+// ══════════════════════════════════════════════════════════════════════
+const TABS = [
+  {id:"home",icon:"🏠",label:"Home"},
+  {id:"calendar",icon:"📅",label:"Cal"},
+  {id:"tasks",icon:"📋",label:"Tasks"},
+  {id:"grades",icon:"🎓",label:"Grades"},
+  {id:"modules",icon:"📚",label:"Modules"},
+  {id:"meds",icon:"💊",label:"Drugs"},
+  {id:"vitals",icon:"🩺",label:"Vitals"},
+  {id:"settings",icon:"⚙️",label:"Me"},
+];
+
+// Apply theme colors globally
+function applyTheme(themeId) {
+  const t = THEMES.find(t => t.id === themeId) || THEMES[0];
+  C.sage = t.sage;
+  C.sageDark = t.sageDark;
+  C.sageLight = t.sageLight;
+  C.amber = t.amber;
+  C.amberLight = t.amberLight;
+  C.bg = t.bg;
+  if (themeId === "midnight") {
+    C.surface = "#2A1A38";
+    C.surfaceAlt = "#1A0F2E";
+    C.ink = "#F0E6FF";
+    C.muted = "#AA88CC";
+    C.border = "#3D2455";
+  } else {
+    C.surface = "#FFFFFF";
+    C.surfaceAlt = t.bg === "#FFF5F8" ? "#FFF0F5" : t.bg === "#FBF5FF" ? "#F5EEFF" : t.bg === "#FFF0F5" ? "#FFE8F2" : t.bg === "#FEF6FF" ? "#F8EEFF" : t.bg === "#FFF8F5" ? "#FFF2EE" : t.bg === "#FDF8F9" ? "#F9F0F3" : "#F0EBE3";
+    C.ink = "#2A2520";
+    C.muted = t.id==="bubblegum"?"#B06080":t.id==="purple"?"#7040A0":t.id==="hotpink"?"#A01050":t.id==="cotton"?"#9060A0":t.id==="rosegold"?"#906050":t.id==="mauve"?"#806070":"#7A7068";
+    C.border = t.id==="bubblegum"?"#F5C0CF":t.id==="purple"?"#E0C0F0":t.id==="hotpink"?"#F5B0CC":t.id==="cotton"?"#E8C8F0":t.id==="rosegold"?"#EDD0C0":t.id==="mauve"?"#E8C8D0":"#DDD5CA";
+  }
+}
+
+function App() {
+  const [tab, setTab] = useState("home");
+  const [data, setData] = useState(() => {
+    const d = load();
+    return {
+      tasks: d.tasks||[],
+      meds: d.meds||[],
+      modules: d.modules||[],
+      gpa: d.gpa||{courses:[]},
+      profile: d.profile||{name:"",emoji:"🩺",motto:"",course:""},
+      themeId: d.themeId||"sage",
+    };
+  });
+  const [prefill, setPrefill] = useState(null);
+  const [, forceRender] = useState(0);
+
+  useEffect(() => { save(data); }, [data]);
+
+  // Apply theme on every render
+  applyTheme(data.themeId);
+
+  const setTasks   = useCallback(fn => setData(d => ({...d, tasks:   typeof fn==="function"?fn(d.tasks)  :fn})), []);
+  const setMeds    = useCallback(fn => setData(d => ({...d, meds:    typeof fn==="function"?fn(d.meds)   :fn})), []);
+  const setModules = useCallback(fn => setData(d => ({...d, modules: typeof fn==="function"?fn(d.modules):fn})), []);
+  const setGpa     = useCallback(fn => setData(d => ({...d, gpa:     typeof fn==="function"?fn(d.gpa)    :fn})), []);
+  const setProfile = useCallback(fn => setData(d => ({...d, profile: typeof fn==="function"?fn(d.profile):fn})), []);
+  const setThemeId = useCallback(id => { setData(d => ({...d, themeId:id})); forceRender(n=>n+1); }, []);
+
+  return (
+    <div style={{ fontFamily:"'Inter',system-ui,sans-serif", background:C.bg, minHeight:"100vh", maxWidth:700, margin:"0 auto" }}>
+      <div style={{ background:C.surface, borderBottom:`1px solid ${C.border}`, padding:"11px 16px", display:"flex", alignItems:"center", gap:10, position:"sticky", top:0, zIndex:10 }}>
+        <div style={{ width:32, height:32, borderRadius:8, background:`linear-gradient(135deg,${C.sage},${C.sageDark})`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:17 }}>
+          {data.profile?.emoji || "🩺"}
+        </div>
+        <div>
+          <div style={{ fontFamily:"Georgia,serif", fontSize:17, fontWeight:700, color:C.ink, lineHeight:1 }}>
+            {data.profile?.name ? `Nurse ${data.profile.name}'s NursePad` : "NursePad"}
+          </div>
+          <div style={{ fontSize:9, color:C.muted, letterSpacing:"0.08em" }}>LAKE TECH LPN 2025–2026</div>
+        </div>
+      </div>
+
+      <div style={{ padding:"16px 13px 108px" }}>
+        {tab==="home"     && <Dashboard tasks={data.tasks} meds={data.meds} modules={data.modules} gpa={data.gpa} profile={data.profile} onNavigate={setTab}/>}
+        {tab==="calendar" && <CalendarView tasks={data.tasks} modules={data.modules} onDayClick={dk=>{setPrefill(dk);setTab("tasks");}}/>}
+        {tab==="tasks"    && <TasksView tasks={data.tasks} setTasks={setTasks} prefillDate={prefill}/>}
+        {tab==="grades"   && <GPAView gpa={data.gpa} setGpa={setGpa}/>}
+        {tab==="modules"  && <ModulesView modules={data.modules} setModules={setModules}/>}
+        {tab==="meds"     && <MedView meds={data.meds} setMeds={setMeds}/>}
+        {tab==="vitals"   && <VitalsView/>}
+        {tab==="settings" && <SettingsView profile={data.profile} setProfile={setProfile} themeId={data.themeId} setThemeId={setThemeId}/>}
+      </div>
+
+      <div style={{ position:"fixed", bottom:0, left:"50%", transform:"translateX(-50%)", width:"100%", maxWidth:700, background:C.surface, borderTop:`1px solid ${C.border}`, display:"flex", overflowX:"auto" }}>
+        {TABS.map(t => (
+          <button key={t.id} onClick={() => setTab(t.id)}
+            style={{ background:"none", border:"none", cursor:"pointer", padding:"7px 0 11px", display:"flex", flexDirection:"column", alignItems:"center", gap:2, flex:1, minWidth:44 }}>
+            <span style={{ fontSize:16 }}>{t.icon}</span>
+            <span style={{ fontSize:8, fontWeight:700, letterSpacing:"0.05em", textTransform:"uppercase", color:tab===t.id?C.sage:C.muted, lineHeight:1 }}>{t.label}</span>
+            {tab===t.id && <span style={{ width:12, height:2, borderRadius:99, background:C.sage }}/>}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+const domRoot = ReactDOM.createRoot(document.getElementById('root'));
+domRoot.render(React.createElement(App));
+  </script>
+</body>
+</html>
